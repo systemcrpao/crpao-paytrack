@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: #993e24;
+  --color-cream: #fdfbf7;
+  --color-warm-gray: #4a5568;
+  --font-sans: 'Sarabun', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--color-cream);
+  color: var(--color-warm-gray);
+}
+
+#root {
+  min-height: 100vh;
+}
