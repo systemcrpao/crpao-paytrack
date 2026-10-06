@@ -1,37 +1,60 @@
 # ก่อน push ขึ้น GitHub
 
-## ห้าม commit / ห้องเปิดเผยบน repo สาธารณะ
+ใช้ checklist นี้ทุกครั้งก่อน `git push` เพื่อไม่ให้ข้อมูลสำคัญหลุดขึ้น repo สาธารณะ
+
+## ห้าม commit / ห้ามเปิดเผยบน repo
 
 | รายการ | เก็บที่ไหน |
 |--------|------------|
-| `.env.local` | เครื่อง dev เท่านั้น (ถูก `.gitignore`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | `.env.local` เท่านั้น — **ไม่** ใส่ใน workflow, **ไม่** commit |
-| `scripts/sheet-export/*.csv` | มีรหัสผ่านผู้ใช้ (ถูก `.gitignore`) |
-| Spreadsheet ID / GAS URL เก่า | ไม่จำเป็นแล้ว — อย่าใส่ในโค้ด |
+| `.env.local` | เครื่อง dev (`.gitignore`: `.env.*`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | `.env.local` เท่านั้น — **ไม่** ใส่ใน workflow |
+| `scripts/sheet-export/*.csv` | มีรหัสผ่าน (`.gitignore`) |
+| Spreadsheet ID / GAS URL เก่า | ไม่ใช้แล้ว — อย่าใส่ใน source |
 
-## GitHub Actions Secrets (ใช้ตอน build Pages)
+## GitHub Actions Secrets (สำหรับ deploy Pages)
 
-| Secret | ใช้ได้ |
-|--------|--------|
+| Secret | ใช้ใน workflow |
+|--------|----------------|
 | `VITE_SUPABASE_URL` | ใช่ |
-| `VITE_SUPABASE_ANON_KEY` | ใช่ (anon public — ฝังในเว็บได้ตามดีไซน์ Supabase + RLS) |
-| `SUPABASE_SERVICE_ROLE_KEY` | **ไม่จำเป็น** สำหรับ deploy — ลบออกจาก GitHub Secrets ได้ถ้า migrate เสร็จแล้ว |
+| `VITE_SUPABASE_ANON_KEY` | ใช่ |
+| `SUPABASE_SERVICE_ROLE_KEY` | **ไม่** — ลบจาก GitHub ได้หลัง migrate |
+| `VITE_GAS_URL` | **ไม่** — ลบได้ |
 
-## ตรวจก่อน push
+## ตรวจก่อน commit / push
 
 ```powershell
 git status
 git diff --cached --name-only
 ```
 
-ต้อง **ไม่เห็น** `.env.local`, ไฟล์ `.csv` ใน `sheet-export`
+ต้อง **ไม่เห็น**:
 
-`public/config.json` ใน repo ควรว่าง (`supabaseUrl` / `supabaseAnonKey` เป็น `""`) — CI จะเขียนค่าจาก Secrets ตอน build
+- `.env.local`
+- `scripts/sheet-export/User.csv` หรือ `Data.csv`
 
-## Push
+`public/config.json` ใน repo ควรเป็น template ว่าง:
+
+```json
+{
+  "supabaseUrl": "",
+  "supabaseAnonKey": ""
+}
+```
+
+CI จะเติมค่าจาก Secrets ตอน build — **อย่า** commit ไฟล์ที่ใส่ key จริงแล้ว
+
+## Push และตรวจหลัง deploy
 
 ```powershell
 git push origin main
 ```
 
-จากนั้นดู Actions → Deploy GitHub Pages จนเขียว
+1. **Actions** → **Deploy GitHub Pages** → สถานะเขียว  
+2. เปิด https://systemcrpao.github.io/crpao-paytrack/config.json — ต้องมี URL และ anon key  
+3. ทดสอบ login ที่ `/login`
+
+## เอกสารที่เกี่ยวข้อง
+
+- [`README.md`](../README.md) — ภาพรวมระบบ  
+- [`SECURITY.md`](../SECURITY.md) — นโยบายความปลอดภัย  
+- [`supabase/README.md`](../supabase/README.md) — DB + migrate
