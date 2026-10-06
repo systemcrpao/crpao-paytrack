@@ -46,11 +46,18 @@ Backend ของ **crpao-paytrack** ใช้ Google Sheets + Apps Script เ�
 
 หลังแก้โค้ด GAS ต้อง **Deploy → Manage deployments → Edit → New version** แล้วบันทึก
 
+### ประสิทธิภาพ
+
+- `getBootstrap` เปิด Spreadsheet **ครั้งเดียว** แล้วอ่านชีต Data + User
+- ใช้ `getLastRow()` แทน `getDataRange()` เพื่อไม่ดึงแถวว่างจำนวนมาก
+- Cache ฝั่ง GAS ~60 วินาที (ล้างอัตโนมัติเมื่อเพิ่ม/แก้ไขข้อมูล)
+- ฝั่งเว็บ cache ใน memory + `sessionStorage` และเรียก API ซ้ำพร้อมกันไม่ได้ (dedupe)
+
 ## API ที่ Frontend เรียก
 
 | วิธี | action | หมายเหตุ |
 |------|--------|----------|
-| GET | `getBootstrap` | โหลดฎีกา + ผู้ใช้ (แนะนำ) |
+| GET | `getBootstrap` | โหลดฎีกา + ผู้ใช้ในคำขอเดียว (แนะนำ — เร็วกว่าเรียกแยก) |
 | GET | `getDika` | ฎีกาทั้งหมด |
 | GET | `getUsers` | รายชื่อผู้ใช้ (ไม่ส่ง password) |
 | POST | `login` | ตรวจ username/password |

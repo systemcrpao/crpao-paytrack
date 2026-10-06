@@ -26,7 +26,7 @@ import { getAssigneeUsers, isRole } from '../utils/apiHelpers';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { allItems, users, loading, error, refresh } = useDikaData();
+  const { allItems, users, loading, refreshing, error, refresh } = useDikaData();
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [statusFormOpen, setStatusFormOpen] = useState(false);
@@ -172,11 +172,11 @@ export default function DashboardPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={refresh}
-            disabled={loading}
+            onClick={() => refresh({ blocking: false })}
+            disabled={loading || refreshing}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white/80 px-4 py-2 text-sm font-medium text-warm-gray transition hover:bg-gray-50 disabled:opacity-60"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading || refreshing ? 'animate-spin' : ''}`} />
             รีเฟรช
           </button>
           {isAdmin && (

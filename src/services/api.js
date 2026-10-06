@@ -121,21 +121,40 @@ async function fetchBootstrapFallback() {
   };
 }
 
+function normalizeBootstrapResult(result) {
+  return {
+    success: true,
+    data: Array.isArray(result?.data) ? result.data : [],
+    users: normalizeUsers({ data: result?.users || [] }),
+  };
+}
+
+function shouldUseLegacyBootstrapFallback(errorMessage) {
+  const message = String(errorMessage || '');
+  return (
+    message === 'Invalid action' ||
+    /HTTP 404/i.test(message) ||
+    /Failed to fetch|NetworkError|Load failed/i.test(message)
+  );
+}
+
 export async function getBootstrap() {
   try {
     const result = await gasGet('getBootstrap');
 
     if (result?.success === false) {
-      return fetchBootstrapFallback();
+      if (shouldUseLegacyBootstrapFallback(result.message)) {
+        return fetchBootstrapFallback();
+      }
+      throw new Error(result.message || 'โหลดข้อมูลไม่สำเร็จ');
     }
 
-    return {
-      success: true,
-      data: Array.isArray(result?.data) ? result.data : [],
-      users: normalizeUsers({ data: result?.users || [] }),
-    };
-  } catch {
-    return fetchBootstrapFallback();
+    return normalizeBootstrapResult(result);
+  } catch (err) {
+    if (shouldUseLegacyBootstrapFallback(err.message)) {
+      return fetchBootstrapFallback();
+    }
+    throw err;
   }
 }
 

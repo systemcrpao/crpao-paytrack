@@ -3,8 +3,6 @@ import { LogIn, FileText, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { login as apiLogin } from '../services/api';
-import { useDikaStore } from '../store/dikaStore';
-
 function formatLoginError(message) {
   if (!message) return 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
 
@@ -33,7 +31,6 @@ export default function LoginPage() {
 
       if (result.success && result.user) {
         login(result.user);
-        void useDikaStore.getState().loadBootstrap({ force: true });
         navigate('/');
       } else {
         setError(result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
