@@ -32,13 +32,15 @@ jobs:
 
       - name: Write public/config.json for GitHub Pages
         env:
-          GAS_URL: ${{ secrets.VITE_GAS_URL }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: node scripts/write-github-config.cjs
 
       - name: Build
         run: npm run build
         env:
-          VITE_GAS_URL: ${{ secrets.VITE_GAS_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_BASE_PATH: /crpao-paytrack/
 
       - name: SPA fallback for client routing

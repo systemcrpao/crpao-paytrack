@@ -1,208 +1,269 @@
+import { COMPLETED_STATUSES, STATUS } from '../constants';
 import { normalizeUsers } from '../utils/apiHelpers';
-import { isValidGasWebAppUrl, resolveGasUrl } from './gasConfig';
+import { getSupabaseClient, usernameToAuthEmail } from './supabaseClient';
 
-/** @deprecated ใช้ resolveGasUrl() — ค่านี้อาจว่างบน GitHub Pages ถ้าไม่ได้ build ด้วย VITE_GAS_URL */
-export const GAS_URL = (import.meta.env.VITE_GAS_URL || '').trim();
+function mapDikaRow(row) {
+  if (!row) return null;
 
-const GAS_ACCESS_DENIED_ERROR =
-  'Google ตอบ 401/403 — ไปที่ Apps Script → Deploy → แอปเว็บ ตั้ง "ผู้ที่มีสิทธิ์เข้าถึง" เป็น **ทุกคน (Anyone)** แล้วกด Deploy เวอร์ชันใหม่ (หรือสร้าง deployment ใหม่) จากนั้นอัปเดต URL /exec';
-
-const GAS_HTML_RESPONSE_ERROR =
-  'ได้รับหน้า HTML แทน JSON จาก Google — ตรวจ URL แอปเว็บ (/exec ไม่ใช่ URL ไลบรารี) และตั้งค่า VITE_GAS_URL หรือ public/config.json บน GitHub Pages';
-
-const GAS_LARGE_RESPONSE_ERROR =
-  'Google ตอบ 404 หลัง redirect (JSON ใหญ่เกินไป) — คัดลอก GAS/gas.md ไป Code.gs แล้ว Deploy เวอร์ชันใหม่ (Anyone) ให้รองรับ getDikaChunk';
-
-const DIKA_CHUNK_SIZE = 15;
-const USER_CHUNK_SIZE = 10;
-const CHUNK_FETCH_CONCURRENCY = 3;
-
-const GAS_CHUNK_ACTION_REQUIRED =
-  'ฝั่ง Google Apps Script ยังไม่รองรับการโหลดแบบแยกส่วน — คัดลอก GAS/gas.md ไป Code.gs แล้ว Deploy เวอร์ชันใหม่ (Anyone)';
-
-function isHtmlResponse(text) {
-  const trimmed = text.trimStart().toLowerCase();
-  return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html');
+  return {
+    id: String(row.id || ''),
+    dikaNo: String(row.dika_no ?? row.dikaNo ?? ''),
+    date: String(row.date || ''),
+    subject: String(row.subject || ''),
+    amount: row.amount,
+    payee: String(row.payee || ''),
+    department: String(row.department || ''),
+    assignee: String(row.assignee || ''),
+    status: String(row.status || ''),
+    timestamp: String(row.created_at_display ?? row.timestamp ?? ''),
+    finishtime: String(row.finishtime || ''),
+    notes: String(row.notes || ''),
+  };
 }
 
-async function parseResponseBody(response) {
-  if (response.status === 401 || response.status === 403) {
-    throw new Error(GAS_ACCESS_DENIED_ERROR);
-  }
+function mapDikaToDb(data) {
+  const payload = {};
 
-  const text = await response.text();
+  if (data.dikaNo !== undefined) payload.dika_no = data.dikaNo;
+  if (data.date !== undefined) payload.date = data.date;
+  if (data.subject !== undefined) payload.subject = data.subject;
+  if (data.amount !== undefined) payload.amount = data.amount;
+  if (data.payee !== undefined) payload.payee = data.payee;
+  if (data.department !== undefined) payload.department = data.department;
+  if (data.assignee !== undefined) payload.assignee = data.assignee;
+  if (data.status !== undefined) payload.status = data.status;
+  if (data.notes !== undefined) payload.notes = data.notes;
+  if (data.timestamp !== undefined) payload.created_at_display = data.timestamp;
+  if (data.finishtime !== undefined) payload.finishtime = data.finishtime;
 
-  if (!text.trim()) {
-    throw new Error('เซิร์ฟเวอร์ไม่ส่งข้อมูลกลับมา');
-  }
-
-  if (isHtmlResponse(text)) {
-    if (response.status === 404) {
-      throw new Error(GAS_LARGE_RESPONSE_ERROR);
-    }
-    throw new Error(GAS_HTML_RESPONSE_ERROR);
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(
-      response.ok
-        ? 'ได้รับข้อมูลจากเซิร์ฟเวอร์ในรูปแบบที่ไม่ถูกต้อง'
-        : `ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ (HTTP ${response.status})`,
-    );
-  }
+  return payload;
 }
 
-async function handleResponse(response, { throwOnFailure = true } = {}) {
-  const result = await parseResponseBody(response);
+function formatBangkokDateTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Bangkok',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
 
-  if (!response.ok) {
-    throw new Error(result?.message || `ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ (HTTP ${response.status})`);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`;
+}
+
+function normalizeStatusValue(status) {
+  const normalized = String(status || '').trim();
+  if (normalized === 'อนุมัตแล้ว') {
+    return STATUS.APPROVED;
+  }
+  return normalized;
+}
+
+function isCompletedStatus(status) {
+  return COMPLETED_STATUSES.includes(normalizeStatusValue(status));
+}
+
+async function fetchProfileForUser(supabase, userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('username, name, role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'ไม่สามารถโหลดข้อมูลผู้ใช้ได้');
   }
 
-  if (throwOnFailure && result?.success === false) {
-    throw new Error(result.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
+  if (!data?.username) {
+    throw new Error('ไม่พบโปรไฟล์ผู้ใช้ในระบบ');
   }
 
-  return result;
+  return {
+    username: String(data.username).trim(),
+    name: String(data.name || data.username).trim(),
+    role: String(data.role || '').trim(),
+  };
 }
 
-async function gasFetch(url, options = {}) {
-  return fetch(url, {
-    redirect: 'follow',
-    credentials: 'omit',
-    cache: 'no-store',
-    ...options,
-  });
-}
+async function generateNextDikaId(supabase) {
+  const { data, error } = await supabase
+    .from('dika')
+    .select('id')
+    .order('id', { ascending: false })
+    .limit(1);
 
-export function assertGasConfigured() {
-  if (isValidGasWebAppUrl(GAS_URL)) {
-    return;
+  if (error) {
+    throw new Error(error.message || 'ไม่สามารถสร้างรหัสเรื่องได้');
   }
-}
 
-/** เรียก GAS ด้วย POST เท่านั้น — GET มัก 404 ที่ script.googleusercontent.com เมื่อ JSON ใหญ่ */
-async function gasRequest(action, payload = {}, options = {}) {
-  const gasUrl = await resolveGasUrl();
-  const response = await gasFetch(gasUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
-    },
-    body: JSON.stringify({ action, payload }),
-  });
-  return handleResponse(response, options);
-}
+  const lastId = data?.[0]?.id;
+  if (!lastId || String(lastId).indexOf('DK-') !== 0) {
+    return 'DK-0001';
+  }
 
-export async function gasGet(action, params = {}) {
-  return gasRequest(action, params);
-}
-
-export async function gasPost(action, payload = {}) {
-  return gasRequest(action, payload);
+  const num = parseInt(String(lastId).replace('DK-', ''), 10) + 1;
+  return `DK-${String(num).padStart(4, '0')}`;
 }
 
 export async function login(username, password) {
   try {
-    return await gasRequest('login', { username, password }, { throwOnFailure: false });
-  } catch (err) {
-    return { success: false, message: err.message || 'เข้าสู่ระบบไม่สำเร็จ' };
-  }
-}
+    const supabase = await getSupabaseClient();
+    const email = usernameToAuthEmail(username);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: String(password || ''),
+    });
 
-export async function getDika() {
-  return gasRequest('getDika');
-}
-
-function normalizeBootstrapResult(result) {
-  return {
-    success: true,
-    data: Array.isArray(result?.data) ? result.data : [],
-    users: normalizeUsers({ data: result?.users || [] }),
-  };
-}
-
-function isInvalidActionError(err) {
-  const message = String(err?.message || '');
-  return message.includes('Invalid action') || message.includes('ไม่รองรับการโหลดแบบแยกส่วน');
-}
-
-async function fetchAllChunks(action, chunkSize) {
-  const first = await gasRequest(action, { offset: 0, limit: chunkSize });
-  const total = Number(first?.total) || 0;
-  let items = Array.isArray(first?.data) ? [...first.data] : [];
-
-  if (items.length >= total || total === 0) {
-    return items;
-  }
-
-  const offsets = [];
-  for (let offset = chunkSize; offset < total; offset += chunkSize) {
-    offsets.push(offset);
-  }
-
-  for (let i = 0; i < offsets.length; i += CHUNK_FETCH_CONCURRENCY) {
-    const batch = offsets.slice(i, i + CHUNK_FETCH_CONCURRENCY);
-    const results = await Promise.all(
-      batch.map((offset) => gasRequest(action, { offset, limit: chunkSize })),
-    );
-
-    for (const result of results) {
-      items = items.concat(Array.isArray(result?.data) ? result.data : []);
+    if (error) {
+      return {
+        success: false,
+        message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+      };
     }
-  }
 
-  return items;
+    const user = await fetchProfileForUser(supabase, data.user.id);
+    return { success: true, user };
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || 'เข้าสู่ระบบไม่สำเร็จ',
+    };
+  }
 }
 
-async function fetchBootstrapViaChunks() {
-  let users;
-  let data;
+export async function fetchSessionProfile() {
+  const supabase = await getSupabaseClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  try {
-    [users, data] = await Promise.all([
-      fetchAllChunks('getUsersChunk', USER_CHUNK_SIZE),
-      fetchAllChunks('getDikaChunk', DIKA_CHUNK_SIZE),
-    ]);
-  } catch (err) {
-    if (isInvalidActionError(err)) {
-      throw new Error(GAS_CHUNK_ACTION_REQUIRED);
-    }
-    throw err;
+  if (!session?.user) {
+    return null;
   }
 
-  return normalizeBootstrapResult({ success: true, data, users });
+  return fetchProfileForUser(supabase, session.user.id);
+}
+
+export async function signOut() {
+  const supabase = await getSupabaseClient();
+  await supabase.auth.signOut();
 }
 
 export async function getBootstrap() {
-  return fetchBootstrapViaChunks();
-}
+  const supabase = await getSupabaseClient();
 
-export async function addDika(data) {
-  return gasPost('addDika', data);
-}
+  const [dikaResult, profilesResult] = await Promise.all([
+    supabase.from('dika').select('*').order('id', { ascending: true }),
+    supabase.from('profiles').select('username, name, role').order('username'),
+  ]);
 
-export async function updateDika(id, data) {
-  return gasPost('updateDika', { id, ...data });
-}
+  if (dikaResult.error) {
+    throw new Error(dikaResult.error.message || 'ไม่สามารถโหลดข้อมูลเรื่องเบิกจ่ายได้');
+  }
 
-export async function updateDikaStatus(id, status) {
-  return gasPost('updateStatus', { id, status });
+  if (profilesResult.error) {
+    throw new Error(profilesResult.error.message || 'ไม่สามารถโหลดรายชื่อผู้ใช้ได้');
+  }
+
+  const data = (dikaResult.data || []).map(mapDikaRow).filter(Boolean);
+  const users = normalizeUsers({ data: profilesResult.data || [] });
+
+  return { success: true, data, users };
 }
 
 export async function getUsers() {
-  try {
-    const data = await fetchAllChunks('getUsersChunk', USER_CHUNK_SIZE);
-    return {
-      success: true,
-      data: normalizeUsers({ data }),
-    };
-  } catch (err) {
-    if (isInvalidActionError(err)) {
-      throw new Error(GAS_CHUNK_ACTION_REQUIRED);
-    }
-    throw err;
+  const { users } = await getBootstrap();
+  return { success: true, data: users };
+}
+
+export async function addDika(data) {
+  const supabase = await getSupabaseClient();
+  const newId = await generateNextDikaId(supabase);
+  const defaultStatus = data.status || STATUS.FORWARD_TO_STAFF;
+  const createdAt = formatBangkokDateTime(new Date());
+
+  const row = {
+    id: newId,
+    dika_no: data.dikaNo,
+    date: data.date,
+    subject: data.subject,
+    amount: data.amount,
+    payee: data.payee,
+    department: data.department,
+    assignee: data.assignee,
+    status: defaultStatus,
+    created_at_display: createdAt,
+    finishtime: '',
+    notes: data.notes || '',
+  };
+
+  const { error } = await supabase.from('dika').insert(row);
+
+  if (error) {
+    throw new Error(error.message || 'บันทึกไม่สำเร็จ');
   }
+
+  return { success: true, message: 'บันทึกสำเร็จ', id: newId };
+}
+
+export async function updateDika(id, data) {
+  const supabase = await getSupabaseClient();
+  const payload = mapDikaToDb(data);
+
+  if (payload.status !== undefined) {
+    payload.status = normalizeStatusValue(payload.status);
+    if (isCompletedStatus(payload.status) && data.finishtime === undefined) {
+      const { data: existing } = await supabase
+        .from('dika')
+        .select('finishtime')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!String(existing?.finishtime || '').trim()) {
+        payload.finishtime = formatBangkokDateTime(new Date());
+      }
+    }
+  }
+
+  payload.updated_at = new Date().toISOString();
+
+  const { error } = await supabase.from('dika').update(payload).eq('id', id);
+
+  if (error) {
+    throw new Error(error.message || 'แก้ไขข้อมูลไม่สำเร็จ');
+  }
+
+  return { success: true, message: 'แก้ไขข้อมูลสำเร็จ' };
+}
+
+export async function updateDikaStatus(id, status) {
+  const supabase = await getSupabaseClient();
+  const statusValue = normalizeStatusValue(status);
+  const payload = {
+    status: statusValue,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (isCompletedStatus(statusValue)) {
+    const { data: existing } = await supabase
+      .from('dika')
+      .select('finishtime')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!String(existing?.finishtime || '').trim()) {
+      payload.finishtime = formatBangkokDateTime(new Date());
+    }
+  }
+
+  const { error } = await supabase.from('dika').update(payload).eq('id', id);
+
+  if (error) {
+    throw new Error(error.message || 'อัปเดตสถานะไม่สำเร็จ');
+  }
+
+  return { success: true, message: 'อัปเดตสถานะสำเร็จ' };
 }

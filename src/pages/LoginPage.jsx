@@ -5,11 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { login as apiLogin } from '../services/api';
 function formatLoginError(message) {
   if (!message) return 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
-
-  if (message.includes('<!DOCTYPE') || message.includes('<html')) {
-    return 'ได้รับหน้า HTML แทน JSON — ตรวจ URL แอปเว็บ (/exec) ใน VITE_GAS_URL และว่า Deploy เลือก "Anyone (ทุกคน)" แล้ว';
-  }
-
   return message.length > 200 ? `${message.slice(0, 200)}...` : message;
 }
 

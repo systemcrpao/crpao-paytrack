@@ -17,8 +17,11 @@ dist-ssr
 .env.*
 !.env.example
 
-# สำเนา GAS ที่มี Spreadsheet ID จริง (ถ้าสร้างไฟล์นี้เอง)
-GAS/gas.private.md
+# export ชีตที่มีรหัสผ่าน (ใช้โอนข้อมูลครั้งเดียว)
+scripts/sheet-export/*.csv
+
+# สำรอง config ที่ generate แล้วมี key จริง (ถ้ามี)
+public/config.local.json
 
 # Editor directories and files
 .vscode/*

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { signOut } from '../services/api';
 import { clearDikaCache } from './dikaStore';
 
 const AUTH_STORAGE_KEY = 'dika-auth-v2';
@@ -34,6 +35,7 @@ export const useAuthStore = create(
           isAuthenticated: true,
         }),
       logout: () => {
+        void signOut().catch(() => {});
         clearDikaCache();
         clearAuthStorage();
         set({ ...emptyAuthState });
