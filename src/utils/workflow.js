@@ -215,15 +215,21 @@ export function formatCurrency(amount) {
 
 export function formatDate(dateStr) {
   if (!dateStr) return '-';
-  try {
-    return new Intl.DateTimeFormat('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(new Date(dateStr));
-  } catch {
-    return dateStr;
+
+  const parts = parseItemDateParts(dateStr);
+  if (!parts) {
+    return String(dateStr);
   }
+
+  const ceYear = parts.year - 543;
+  const noonUtc = Date.UTC(ceYear, parts.month - 1, parts.day, 12, 0, 0);
+
+  return new Intl.DateTimeFormat('th-TH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'Asia/Bangkok',
+  }).format(new Date(noonUtc));
 }
 
 function parseDateTimeToMs(dateStr) {
@@ -248,8 +254,12 @@ function parseDateTimeToMs(dateStr) {
   }
 
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-    const isoParsed = new Date(trimmed).getTime();
-    if (!Number.isNaN(isoParsed)) return isoParsed;
+    const parts = parseItemDateParts(trimmed);
+    if (parts) {
+      const ceYear = parts.year - 543;
+      const parsed = new Date(ceYear, parts.month - 1, parts.day).getTime();
+      if (!Number.isNaN(parsed)) return parsed;
+    }
   }
 
   const direct = new Date(trimmed).getTime();
