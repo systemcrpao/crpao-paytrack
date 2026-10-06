@@ -57,15 +57,15 @@ Backend ของ **crpao-paytrack** ใช้ Google Sheets + Apps Script เ�
 
 | วิธี | action | หมายเหตุ |
 |------|--------|----------|
-| GET | `getBootstrap` | โหลดฎีกา + ผู้ใช้ในคำขอเดียว (แนะนำ — เร็วกว่าเรียกแยก) |
-| GET | `getDika` | ฎีกาทั้งหมด |
-| GET | `getUsers` | รายชื่อผู้ใช้ (ไม่ส่ง password) |
+| POST | `getBootstrap` | โหลดฎีกา + ผู้ใช้ในคำขอเดียว (แนะนำ) |
+| POST | `getDika` | ฎีกาทั้งหมด |
+| POST | `getUsers` | รายชื่อผู้ใช้ (ไม่ส่ง password) |
 | POST | `login` | ตรวจ username/password |
 | POST | `addDika` | เพิ่มเรื่อง |
 | POST | `updateDika` | แก้ไข |
 | POST | `updateStatus` | เปลี่ยนสถานะ |
 
-POST ส่ง body เป็น JSON ผ่าน `Content-Type: text/plain` เพื่อลดปัญหา CORS preflight
+**ทุก action ใช้ POST** (body JSON ผ่าน `Content-Type: text/plain`) — อย่าใช้ GET กับ `getDika`/`getBootstrap` เพราะ JSON ใหญ่มัก 404 ที่ `googleusercontent.com`
 
 ## ปีงบประมาณ (ฝั่ง Frontend)
 
