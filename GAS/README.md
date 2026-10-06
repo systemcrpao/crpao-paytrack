@@ -1,7 +1,7 @@
 # Google Apps Script (Backend)
 
 Backend ของ **crpao-paytrack** ใช้ Google Sheets + Apps Script เป็น Web App  
-โค้ดอ้างอิงอยู่ใน [`gas.md`](./gas.md) — คัดลอกทั้งไฟล์ไปวางใน `Code.gs` แล้วแก้ค่าที่จำเป็น
+โค้ดอ้างอิงอยู่ใน [`gas.md`](./gas.md) — **คัดลอกเนื้อหาทั้งไฟล์** ไปวางใน `Code.gs` (แทนที่ของเดิมทั้งหมด) แล้วแก้ `SPREADSHEET_ID` เท่านั้น
 
 ## ก่อน Deploy
 
