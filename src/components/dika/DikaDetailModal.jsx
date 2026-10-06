@@ -3,6 +3,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateTimeDisplay,
+  formatDikaNo,
 } from '../../utils/workflow';
 import ProcessingDurationDisplay from './ProcessingDurationDisplay';
 import { getUserDisplayName } from '../../utils/apiHelpers';
@@ -34,7 +35,7 @@ export default function DikaDetailModal({ open, onClose, item, users = [] }) {
             <label className="mb-1 block text-sm font-medium text-warm-gray">
               เลขที่รับเรื่อง
             </label>
-            <input value={item.dikaNo || '-'} readOnly className={readOnlyClass} />
+            <input value={formatDikaNo(item.dikaNo) || '-'} readOnly className={readOnlyClass} />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-warm-gray">วันที่</label>

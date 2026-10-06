@@ -49,6 +49,7 @@ export function searchDikaItems(items, query, users = []) {
     const assigneeName = getUserDisplayName(item.assignee, users);
     const searchableText = [
       item.dikaNo,
+      formatDikaNo(item.dikaNo),
       item.date,
       item.subject,
       item.payee,
@@ -211,6 +212,19 @@ export function formatCurrency(amount) {
     currency: 'THB',
     minimumFractionDigits: 2,
   }).format(Number(amount) || 0);
+}
+
+/** เลขที่รับเรื่อง (คอลัมน์ B) — แสดงอย่างน้อย 4 หลัก เช่น 1 → 0001 */
+export function formatDikaNo(value) {
+  if (value === null || value === undefined) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  if (/^\d+$/.test(raw)) {
+    return raw.padStart(4, '0');
+  }
+
+  return raw;
 }
 
 export function formatDate(dateStr) {

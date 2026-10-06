@@ -3,16 +3,28 @@ import { normalizeUsers } from '../utils/apiHelpers';
 /** ตั้งค่าใน `.env.local` (local) หรือ GitHub Secret `VITE_GAS_URL` (Pages) — ห้าม commit URL จริง */
 export const GAS_URL = (import.meta.env.VITE_GAS_URL || '').trim();
 
+const GAS_URL_HINT =
+  'ใช้ URL จาก Deploy → แอปเว็บ (ลงท้าย /exec) ไม่ใช่ URL ไลบรารี — ตั้งใน .env.local หรือ GitHub Secret VITE_GAS_URL';
+
 export function assertGasConfigured() {
   if (!GAS_URL) {
+    throw new Error(`ยังไม่ได้ตั้งค่า VITE_GAS_URL — ${GAS_URL_HINT}`);
+  }
+
+  const validWebApp =
+    /^https:\/\/script\.google\.com\/macros\/s\/[a-zA-Z0-9_-]+\/(exec|dev)(\?.*)?$/.test(
+      GAS_URL,
+    );
+
+  if (!validWebApp) {
     throw new Error(
-      'ยังไม่ได้ตั้งค่า VITE_GAS_URL สำหรับ Google Apps Script — ดู README.md ส่วนการตั้งค่า',
+      `VITE_GAS_URL ไม่ถูกต้อง (ต้องเป็นแอปเว็บ script.google.com/macros/s/.../exec) — ${GAS_URL_HINT}`,
     );
   }
 }
 
-const GAS_ACCESS_ERROR =
-  'ไม่สามารถเชื่อมต่อ Google Apps Script ได้ กรุณาตรวจสอบว่า Deploy แล้วและเลือก "Anyone (ทุกคน)"';
+const GAS_HTML_RESPONSE_ERROR =
+  'ได้รับหน้า HTML แทน JSON จาก Google — มักเกิดจาก URL ผิด (เช่น คัดลอก URL ไลบรารีแทนแอปเว็บ) หรือยังไม่ได้ตั้ง VITE_GAS_URL ตอน build GitHub Pages — ตรวจ Deploy แอปเว็บว่าเลือก "Anyone (ทุกคน)" แล้วคัดลอก URL /exec';
 
 function isHtmlResponse(text) {
   const trimmed = text.trimStart().toLowerCase();
@@ -27,7 +39,7 @@ async function parseResponseBody(response) {
   }
 
   if (isHtmlResponse(text)) {
-    throw new Error(GAS_ACCESS_ERROR);
+    throw new Error(GAS_HTML_RESPONSE_ERROR);
   }
 
   try {

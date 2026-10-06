@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { STATUS } from '../../constants';
-import { formatCurrency, formatDate } from '../../utils/workflow';
+import { formatCurrency, formatDate, formatDikaNo } from '../../utils/workflow';
 import ProcessingDurationDisplay from './ProcessingDurationDisplay';
 import { getUserDisplayName } from '../../utils/apiHelpers';
 import StatusBadge from './StatusBadge';
@@ -101,7 +101,7 @@ export default function DikaTable({
                   }`}
                 >
                   <td className={`px-4 py-3 text-center ${isCancelled ? '' : 'font-medium'}`}>
-                    {item.dikaNo}
+                    {formatDikaNo(item.dikaNo) || '-'}
                   </td>
                   <td className="px-4 py-3 text-center">{formatDate(item.date)}</td>
                   <td

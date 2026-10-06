@@ -5,6 +5,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateTimeDisplay,
+  formatDikaNo,
 } from '../../utils/workflow';
 import ProcessingDurationDisplay from './ProcessingDurationDisplay';
 import { getUserDisplayName, isRole } from '../../utils/apiHelpers';
@@ -83,7 +84,7 @@ export default function DikaStatusForm({
         <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-warm-gray">เลขที่รับเรื่อง</label>
-            <input value={item.dikaNo || ''} readOnly className={readOnlyClass} />
+            <input value={formatDikaNo(item.dikaNo)} readOnly className={readOnlyClass} />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-warm-gray">วันที่</label>

@@ -9,7 +9,7 @@ function formatLoginError(message) {
   if (!message) return 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
 
   if (message.includes('<!DOCTYPE') || message.includes('<html')) {
-    return 'ไม่สามารถเชื่อมต่อ Google Apps Script ได้ กรุณาตรวจสอบว่า Deploy แล้วและเลือก "Anyone (ทุกคน)"';
+    return 'ได้รับหน้า HTML แทน JSON — ตรวจ URL แอปเว็บ (/exec) ใน VITE_GAS_URL และว่า Deploy เลือก "Anyone (ทุกคน)" แล้ว';
   }
 
   return message.length > 200 ? `${message.slice(0, 200)}...` : message;
