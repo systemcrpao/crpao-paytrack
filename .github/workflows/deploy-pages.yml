@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -33,7 +33,7 @@ jobs:
       - name: Write public/config.json for GitHub Pages
         env:
           GAS_URL: ${{ secrets.VITE_GAS_URL }}
-        run: node -e "const fs=require('fs');const u=(process.env.GAS_URL||'').trim();fs.writeFileSync('public/config.json', JSON.stringify({ gasUrl: u }, null, 2));"
+        run: node scripts/write-github-config.cjs
 
       - name: Build
         run: npm run build
@@ -45,7 +45,7 @@ jobs:
         run: cp dist/index.html dist/404.html
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: dist
 
