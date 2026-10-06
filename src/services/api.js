@@ -1,30 +1,14 @@
 import { normalizeUsers } from '../utils/apiHelpers';
+import { isValidGasWebAppUrl, resolveGasUrl } from './gasConfig';
 
-/** ตั้งค่าใน `.env.local` (local) หรือ GitHub Secret `VITE_GAS_URL` (Pages) — ห้าม commit URL จริง */
+/** @deprecated ใช้ resolveGasUrl() — ค่านี้อาจว่างบน GitHub Pages ถ้าไม่ได้ build ด้วย VITE_GAS_URL */
 export const GAS_URL = (import.meta.env.VITE_GAS_URL || '').trim();
 
-const GAS_URL_HINT =
-  'ใช้ URL จาก Deploy → แอปเว็บ (ลงท้าย /exec) ไม่ใช่ URL ไลบรารี — ตั้งใน .env.local หรือ GitHub Secret VITE_GAS_URL';
-
-export function assertGasConfigured() {
-  if (!GAS_URL) {
-    throw new Error(`ยังไม่ได้ตั้งค่า VITE_GAS_URL — ${GAS_URL_HINT}`);
-  }
-
-  const validWebApp =
-    /^https:\/\/script\.google\.com\/macros\/s\/[a-zA-Z0-9_-]+\/(exec|dev)(\?.*)?$/.test(
-      GAS_URL,
-    );
-
-  if (!validWebApp) {
-    throw new Error(
-      `VITE_GAS_URL ไม่ถูกต้อง (ต้องเป็นแอปเว็บ script.google.com/macros/s/.../exec) — ${GAS_URL_HINT}`,
-    );
-  }
-}
+const GAS_ACCESS_DENIED_ERROR =
+  'Google ตอบ 401/403 — ไปที่ Apps Script → Deploy → แอปเว็บ ตั้ง "ผู้ที่มีสิทธิ์เข้าถึง" เป็น **ทุกคน (Anyone)** แล้วกด Deploy เวอร์ชันใหม่ (หรือสร้าง deployment ใหม่) จากนั้นอัปเดต URL /exec';
 
 const GAS_HTML_RESPONSE_ERROR =
-  'ได้รับหน้า HTML แทน JSON จาก Google — มักเกิดจาก URL ผิด (เช่น คัดลอก URL ไลบรารีแทนแอปเว็บ) หรือยังไม่ได้ตั้ง VITE_GAS_URL ตอน build GitHub Pages — ตรวจ Deploy แอปเว็บว่าเลือก "Anyone (ทุกคน)" แล้วคัดลอก URL /exec';
+  'ได้รับหน้า HTML แทน JSON จาก Google — ตรวจ URL แอปเว็บ (/exec ไม่ใช่ URL ไลบรารี) และตั้งค่า VITE_GAS_URL หรือ public/config.json บน GitHub Pages';
 
 function isHtmlResponse(text) {
   const trimmed = text.trimStart().toLowerCase();
@@ -32,6 +16,10 @@ function isHtmlResponse(text) {
 }
 
 async function parseResponseBody(response) {
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(GAS_ACCESS_DENIED_ERROR);
+  }
+
   const text = await response.text();
 
   if (!text.trim()) {
@@ -67,37 +55,48 @@ async function handleResponse(response, { throwOnFailure = true } = {}) {
   return result;
 }
 
-export async function gasGet(action, params = {}) {
-  assertGasConfigured();
-  const search = new URLSearchParams({ action, ...params });
-  const response = await fetch(`${GAS_URL}?${search.toString()}`, {
+async function gasFetch(url, options = {}) {
+  return fetch(url, {
     redirect: 'follow',
+    credentials: 'omit',
+    cache: 'no-store',
+    ...options,
   });
+}
+
+export function assertGasConfigured() {
+  if (isValidGasWebAppUrl(GAS_URL)) {
+    return;
+  }
+}
+
+export async function gasGet(action, params = {}) {
+  const gasUrl = await resolveGasUrl();
+  const search = new URLSearchParams({ action, ...params });
+  const response = await gasFetch(`${gasUrl}?${search.toString()}`);
   return handleResponse(response);
 }
 
 export async function gasPost(action, payload = {}) {
-  assertGasConfigured();
-  const response = await fetch(GAS_URL, {
+  const gasUrl = await resolveGasUrl();
+  const response = await gasFetch(gasUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain;charset=utf-8',
     },
     body: JSON.stringify({ action, payload }),
-    redirect: 'follow',
   });
   return handleResponse(response);
 }
 
 export async function login(username, password) {
-  assertGasConfigured();
-  const response = await fetch(GAS_URL, {
+  const gasUrl = await resolveGasUrl();
+  const response = await gasFetch(gasUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain;charset=utf-8',
     },
     body: JSON.stringify({ action: 'login', payload: { username, password } }),
-    redirect: 'follow',
   });
   return handleResponse(response, { throwOnFailure: false });
 }

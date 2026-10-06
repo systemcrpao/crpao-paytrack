@@ -43,8 +43,8 @@ export default function DikaStatusForm({
   const readOnlyClass =
     'w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-500 cursor-not-allowed';
 
-  const inputClass =
-    'w-full rounded-lg border border-gray-200 bg-white/80 px-3 py-2 text-sm text-warm-gray outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20';
+  const statusSelectClass =
+    'w-full rounded-lg border-2 border-amber-400 bg-yellow-100 px-3 py-2 text-sm font-medium text-warm-gray shadow-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-300/60';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,13 +114,15 @@ export default function DikaStatusForm({
               className={readOnlyClass}
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-warm-gray">สถานะ</label>
+          <div className="rounded-xl border border-amber-300/80 bg-yellow-50/90 p-3 ring-1 ring-amber-200/60">
+            <label className="mb-1.5 block text-sm font-semibold text-amber-900">
+              สถานะ
+            </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               required
-              className={inputClass}
+              className={statusSelectClass}
             >
               {statusOptions.map((option) => (
                 <option key={option} value={option}>

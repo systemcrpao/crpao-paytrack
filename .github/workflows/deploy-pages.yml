@@ -30,6 +30,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Write public/config.json for GitHub Pages
+        env:
+          GAS_URL: ${{ secrets.VITE_GAS_URL }}
+        run: node -e "const fs=require('fs');const u=(process.env.GAS_URL||'').trim();fs.writeFileSync('public/config.json', JSON.stringify({ gasUrl: u }, null, 2));"
+
       - name: Build
         run: npm run build
         env:

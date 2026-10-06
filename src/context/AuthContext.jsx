@@ -8,18 +8,14 @@ export function AuthProvider({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const login = useAuthStore((s) => s.login);
   const logout = useAuthStore((s) => s.logout);
-  const clearExpiredSession = useAuthStore((s) => s.clearExpiredSession);
   const [authReady, setAuthReady] = useState(() =>
     useAuthStore.persist.hasHydrated(),
   );
 
   useEffect(() => {
     const finishHydration = () => {
-      clearExpiredSession();
       setAuthReady(true);
     };
-
-    clearExpiredSession();
 
     const unsubHydration = useAuthStore.persist.onFinishHydration(finishHydration);
 
@@ -29,19 +25,10 @@ export function AuthProvider({ children }) {
       finishHydration();
     }
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        clearExpiredSession();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       unsubHydration();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [clearExpiredSession]);
+  }, []);
 
   return (
     <AuthContext.Provider

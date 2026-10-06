@@ -19,7 +19,7 @@
 
 2. **รหัผ่านในชีต** — ระบบ login เปรียบเทียบรหัสผ่านแบบ plain text ในชีต ไม่เหมาะกับข้อมูลที่มีความอ่อนไหสูง ควรใช้รหัสผ่านเฉพาะระบบนี้ และจำกัดการแชร์ชีต
 
-3. **GitHub Pages เป็น static site** — ไม่มี server-side session; session อยู่ที่ `sessionStorage` ในเบราว์เซอร์
+3. **GitHub Pages เป็น static site** — ไม่มี server-side session; สถานะ login เก็บใน `localStorage` ของเบราว์เซอร์ (ออกจากระบบเมื่อกด logout เท่านั้น — login ได้หลายเครื่องพร้อมกัน)
 
 4. **Repository สาธารณะ** — โค้ด frontend ทั้งหมดอ่านได้ อย่าใส่ API key, token, หรือข้อมูลส่วนตัวใน source
 

@@ -51,10 +51,12 @@ URL หลัง deploy (เมื่อเปิด Pages แล้ว):
 
 1. **Push โค้ด** ไป branch `main` (ดูด้านล่าง)
 2. Repo → **Settings → Secrets and variables → Actions**  
-   สร้าง secret ชื่อ **`VITE_GAS_URL`** = URL Web App GAS (`.../exec`)
-3. **Settings → Pages**  
-   - Source: **GitHub Actions** (ไม่ใช่ Deploy from branch)
+   สร้าง secret ชื่อ **`VITE_GAS_URL`** = URL Web App GAS (`.../exec`)  
+   (workflow จะเขียนลง `public/config.json` ตอน build ด้วย — ใช้เมื่อ bundle ไม่มี env)
+3. **Settings → Pages** → Source: **GitHub Actions**
 4. Push หรือรัน workflow **Deploy GitHub Pages** จากแท็บ Actions
+
+ถ้า login ขึ้น **401** หรือ HTML จาก Google: Apps Script → Deploy แอปเว็บ ตั้ง **ทุกคน (Anyone)** แล้ว Deploy เวอร์ชันใหม่ และอัปเดต URL `/exec` ใน Secret
 
 Workflow จะ build ด้วย `VITE_BASE_PATH=/crpao-paytrack/` และ copy `404.html` สำหรับ client-side routing
 

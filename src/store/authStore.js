@@ -2,26 +2,27 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { clearDikaCache } from './dikaStore';
 
-export function getTodaySessionKey() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Bangkok',
-  }).format(new Date());
-}
-
-export function isSessionValid(sessionDay) {
-  if (!sessionDay) return false;
-  return sessionDay === getTodaySessionKey();
-}
+const AUTH_STORAGE_KEY = 'dika-auth-v2';
 
 const emptyAuthState = {
   user: null,
   isAuthenticated: false,
-  sessionDay: null,
 };
+
+function clearAuthStorage() {
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem('dika-auth');
+    localStorage.removeItem('dika-auth');
+  } catch {
+    /* ignore */
+  }
+}
 
 export const useAuthStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...emptyAuthState,
       login: (user) =>
         set({
@@ -31,39 +32,27 @@ export const useAuthStore = create(
             role: user.role,
           },
           isAuthenticated: true,
-          sessionDay: getTodaySessionKey(),
         }),
       logout: () => {
         clearDikaCache();
-        set({ ...emptyAuthState });
-      },
-      clearExpiredSession: () => {
-        const { sessionDay } = get();
-        if (isSessionValid(sessionDay)) return;
-        clearDikaCache();
+        clearAuthStorage();
         set({ ...emptyAuthState });
       },
     }),
     {
-      name: 'dika-auth',
-      storage: createJSONStorage(() => sessionStorage),
+      name: AUTH_STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        sessionDay: state.sessionDay,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (!state || !isSessionValid(state.sessionDay)) {
-          clearDikaCache();
-          useAuthStore.setState({ ...emptyAuthState });
-        }
-      },
     },
   ),
 );
 
 try {
+  sessionStorage.removeItem('dika-auth');
   localStorage.removeItem('dika-auth');
 } catch {
-  /* ignore */
+  /* ignore legacy keys */
 }
