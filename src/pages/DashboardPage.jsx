@@ -127,6 +127,11 @@ export default function DashboardPage() {
     setFormOpen(true);
   };
 
+  const handleEditItem = (item) => {
+    setEditingItem(item);
+    setFormOpen(true);
+  };
+
   const handleStatusEdit = (item) => {
     setStatusEditingItem(item);
     setStatusFormOpen(true);
@@ -147,11 +152,11 @@ export default function DashboardPage() {
     setStatusEditingItem(null);
   };
 
-  const handleStatusFormSubmit = async (id, status) => {
+  const handleStatusFormSubmit = async (id, status, options = {}) => {
     if (!id) {
       throw new Error('ไม่พบรหัสรายการ');
     }
-    await updateDikaStatus(id, status);
+    await updateDikaStatus(id, status, options);
     await refresh();
   };
 
@@ -230,6 +235,7 @@ export default function DashboardPage() {
         users={users}
         onAcknowledge={handleAcknowledge}
         onStatusEdit={handleStatusEdit}
+        onEditItem={handleEditItem}
         onViewDetail={handleViewDetail}
         loading={loading && allItems.length === 0}
         emptyMessage={tableEmptyMessage}

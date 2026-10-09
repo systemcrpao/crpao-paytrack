@@ -239,13 +239,17 @@ export async function updateDika(id, data) {
   return { success: true, message: 'แก้ไขข้อมูลสำเร็จ' };
 }
 
-export async function updateDikaStatus(id, status) {
+export async function updateDikaStatus(id, status, { notes } = {}) {
   const supabase = await getSupabaseClient();
   const statusValue = normalizeStatusValue(status);
   const payload = {
     status: statusValue,
     updated_at: new Date().toISOString(),
   };
+
+  if (notes !== undefined) {
+    payload.notes = notes;
+  }
 
   if (isCompletedStatus(statusValue)) {
     const { data: existing } = await supabase

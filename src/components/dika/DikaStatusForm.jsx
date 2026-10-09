@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { ROLES, STAFF_STATUS_OPTIONS, MANAGER_STATUS_OPTIONS } from '../../constants';
+import {
+  ROLES,
+  STATUS,
+  STAFF_STATUS_OPTIONS,
+  MANAGER_STATUS_OPTIONS,
+} from '../../constants';
 import {
   formatCurrency,
   formatDate,
@@ -19,15 +24,42 @@ export default function DikaStatusForm({
   onSubmit,
 }) {
   const [status, setStatus] = useState('');
+  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (item) {
       setStatus(item.status || '');
+      setNotes(item.notes || '');
       setError('');
     }
   }, [item]);
+
+  const isStaffUser = isRole(userRole, ROLES.USER);
+  const isManager = isRole(userRole, ROLES.MANAGER);
+
+  const showEditableNotes =
+    (isStaffUser &&
+      (status === STATUS.RETURNED || status === STATUS.CANCELLED)) ||
+    (isManager && status === STATUS.RETURNED);
+
+  function handleStatusChange(nextStatus) {
+    setStatus(nextStatus);
+    if (isStaffUser && nextStatus === STATUS.PROPOSE) {
+      setNotes('');
+    }
+  }
+
+  function resolveNotesPayload() {
+    if (isStaffUser && status === STATUS.PROPOSE) {
+      return { notes: '' };
+    }
+    if (showEditableNotes) {
+      return { notes: notes.trim() };
+    }
+    return {};
+  }
 
   if (!open || !item) return null;
 
@@ -52,7 +84,7 @@ export default function DikaStatusForm({
     setSubmitting(true);
 
     try {
-      await onSubmit(item.id, status);
+      await onSubmit(item.id, status, resolveNotesPayload());
       onClose();
     } catch (err) {
       setError(err.message || 'เกิดข้อผิดพลาด');
@@ -120,7 +152,7 @@ export default function DikaStatusForm({
             </label>
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) => handleStatusChange(e.target.value)}
               required
               className={statusSelectClass}
             >
@@ -163,12 +195,25 @@ export default function DikaStatusForm({
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-warm-gray">หมายเหตุ</label>
+            <label className="mb-1 block text-sm font-medium text-warm-gray">
+              หมายเหตุ
+              {showEditableNotes && (
+                <span className="ml-1 font-normal text-warm-gray/60">(ไม่บังคับ)</span>
+              )}
+            </label>
             <textarea
-              value={item.notes || ''}
-              readOnly
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              readOnly={!showEditableNotes}
               rows={3}
-              className={readOnlyClass}
+              placeholder={
+                showEditableNotes ? 'บันทึกเหตุผล (ถ้ามี)' : undefined
+              }
+              className={
+                showEditableNotes
+                  ? 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-warm-gray outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20'
+                  : readOnlyClass
+              }
             />
           </div>
 

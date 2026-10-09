@@ -200,6 +200,11 @@ export function canManagerManage(status) {
   return MANAGER_MANAGE_STATUSES.some((item) => isStatus(status, item));
 }
 
+/** เจ้าหน้าที่ธุรการ — แก้ไขรายละเอียดเรื่องที่ถูกส่งคืน/แก้ไข (เช่น จากผู้รับผิดชอบ) */
+export function canAdminEditReturned(status) {
+  return isStatus(status, STATUS.RETURNED);
+}
+
 export function getAckTargetStatus(role) {
   if (isRole(role, ROLES.USER)) return STATUS.REVIEW;
   if (isRole(role, ROLES.MANAGER)) return STATUS.PENDING_APPROVAL;

@@ -20,6 +20,7 @@ export default function DikaTable({
   users = [],
   onAcknowledge,
   onStatusEdit,
+  onEditItem,
   onViewDetail,
   loading,
   emptyMessage = 'ไม่พบข้อมูลเรื่องเบิกจ่าย',
@@ -132,6 +133,7 @@ export default function DikaTable({
                         userRole={userRole}
                         onAcknowledge={onAcknowledge}
                         onStatusEdit={onStatusEdit}
+                        onEditItem={onEditItem}
                         onViewDetail={onViewDetail}
                       />
                     </div>

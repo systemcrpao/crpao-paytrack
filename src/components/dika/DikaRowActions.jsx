@@ -7,6 +7,7 @@ import {
   canManagerAcknowledge,
   canStaffManage,
   canManagerManage,
+  canAdminEditReturned,
   getAckTargetStatus,
 } from '../../utils/workflow';
 
@@ -15,17 +16,20 @@ export default function DikaRowActions({
   userRole,
   onAcknowledge,
   onStatusEdit,
+  onEditItem,
   onViewDetail,
 }) {
   const [updating, setUpdating] = useState(false);
 
   const isUser = isRole(userRole, ROLES.USER);
   const isManager = isRole(userRole, ROLES.MANAGER);
+  const isAdmin = isRole(userRole, ROLES.ADMIN);
 
   const showStaffAck = isUser && canStaffAcknowledge(item.status);
   const showManagerAck = isManager && canManagerAcknowledge(item.status);
   const showStaffManage = isUser && canStaffManage(item.status);
   const showManagerManage = isManager && canManagerManage(item.status);
+  const showAdminEdit = isAdmin && canAdminEditReturned(item.status);
 
   const handleAcknowledge = async () => {
     setUpdating(true);
@@ -69,6 +73,18 @@ export default function DikaRowActions({
           title="แก้ไขสถานะ"
           aria-label="แก้ไขสถานะ"
           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-white/80 text-primary transition hover:bg-primary/5 disabled:opacity-60"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      )}
+
+      {showAdminEdit && (
+        <button
+          type="button"
+          onClick={() => onEditItem(item)}
+          title="แก้ไขเรื่อง"
+          aria-label="แก้ไขเรื่อง"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-white/80 text-primary transition hover:bg-primary/5"
         >
           <Pencil className="h-4 w-4" />
         </button>
