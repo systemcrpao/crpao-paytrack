@@ -3,6 +3,8 @@ import { Plus, RefreshCw } from 'lucide-react';
 import MainLayout from '../components/layout/MainLayout';
 import SummaryDashboard from '../components/dashboard/SummaryDashboard';
 import DikaTable from '../components/dika/DikaTable';
+import DikaStatusFilterChecklist from '../components/dika/DikaStatusFilterChecklist';
+import DikaTableColumnSettings from '../components/dika/DikaTableColumnSettings';
 import DikaSearchBar from '../components/dika/DikaSearchBar';
 import FiscalYearSelect from '../components/dika/FiscalYearSelect';
 import DikaForm from '../components/dika/DikaForm';
@@ -16,13 +18,16 @@ import {
   filterDikaByRole,
   computeDashboardMetrics,
   searchDikaItems,
-  sortDikaByDateDesc,
   isStatus,
   filterDikaByFiscalYear,
   extractFiscalYears,
   getCurrentFiscalYear,
 } from '../utils/workflow';
 import { getAssigneeUsers, isRole } from '../utils/apiHelpers';
+import {
+  loadColumnVisibility,
+  loadStatusFilterSelection,
+} from '../utils/tableDisplayPrefs';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -36,6 +41,10 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingApprovalOnly, setPendingApprovalOnly] = useState(false);
   const [fiscalYear, setFiscalYear] = useState(() => String(getCurrentFiscalYear()));
+  const [statusFilter, setStatusFilter] = useState(() => loadStatusFilterSelection());
+  const [columnVisibility, setColumnVisibility] = useState(() =>
+    loadColumnVisibility(),
+  );
 
   const isAdmin = isRole(user?.role, ROLES.ADMIN);
   const isManager = isRole(user?.role, ROLES.MANAGER);
@@ -61,9 +70,7 @@ export default function DashboardPage() {
   );
 
   const searchedItems = useMemo(() => {
-    let items = sortDikaByDateDesc(
-      searchDikaItems(fiscalFilteredItems, searchQuery, users),
-    );
+    let items = searchDikaItems(fiscalFilteredItems, searchQuery, users);
 
     if (isRole(user?.role, ROLES.MANAGER) && pendingApprovalOnly) {
       items = items.filter((item) =>
@@ -80,13 +87,23 @@ export default function DashboardPage() {
     pendingApprovalOnly,
   ]);
 
+  const tableItems = useMemo(
+    () =>
+      searchedItems.filter((item) =>
+        statusFilter.some((status) => isStatus(item.status, status)),
+      ),
+    [searchedItems, statusFilter],
+  );
+
   const tableEmptyMessage =
-    visibleItems.length > 0 && searchedItems.length === 0
+    visibleItems.length > 0 && tableItems.length === 0
       ? pendingApprovalOnly
         ? 'ไม่พบเรื่องที่รออนุมัติ'
-        : fiscalFilteredItems.length === 0 && fiscalYear !== 'all'
-          ? `ไม่พบข้อมูลในปีงบประมาณ ${fiscalYear}`
-          : 'ไม่พบข้อมูลที่ตรงกับการค้นหา'
+        : searchedItems.length > 0
+          ? 'ไม่มีเรื่องตามสถานะที่เลือก — ลองติ๊กสถานะเพิ่มด้านบน'
+          : fiscalFilteredItems.length === 0 && fiscalYear !== 'all'
+            ? `ไม่พบข้อมูลในปีงบประมาณ ${fiscalYear}`
+            : 'ไม่พบข้อมูลที่ตรงกับการค้นหา'
       : 'ไม่พบข้อมูลเรื่องเบิกจ่าย';
 
   const metrics = useMemo(
@@ -229,8 +246,20 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <DikaStatusFilterChecklist
+          selected={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <DikaTableColumnSettings
+          visibleColumns={columnVisibility}
+          onChange={setColumnVisibility}
+        />
+      </div>
+
       <DikaTable
-        items={searchedItems}
+        items={tableItems}
+        visibleColumns={columnVisibility}
         userRole={user?.role}
         users={users}
         onAcknowledge={handleAcknowledge}

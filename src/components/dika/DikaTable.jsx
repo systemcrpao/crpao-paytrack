@@ -1,11 +1,54 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+} from 'lucide-react';
 import { STATUS } from '../../constants';
-import { formatCurrency, formatDate, formatDikaNo } from '../../utils/workflow';
+import {
+  formatCurrency,
+  formatDate,
+  formatDikaNo,
+  sortDikaItems,
+} from '../../utils/workflow';
 import ProcessingDurationDisplay from './ProcessingDurationDisplay';
 import { getUserDisplayName } from '../../utils/apiHelpers';
 import StatusBadge from './StatusBadge';
 import DikaRowActions from './DikaRowActions';
+import {
+  defaultColumnVisibility,
+  isTableColumnVisible,
+} from '../../utils/tableDisplayPrefs';
+
+function SortableHeader({ label, columnKey, sortKey, sortDir, onSort }) {
+  const active = sortKey === columnKey;
+  let SortIcon = ChevronsUpDown;
+  if (active && sortDir === 'asc') SortIcon = ArrowUp;
+  if (active && sortDir === 'desc') SortIcon = ArrowDown;
+
+  return (
+    <th className="px-4 py-3 font-semibold text-primary">
+      <button
+        type="button"
+        onClick={() => onSort(columnKey)}
+        className={`inline-flex w-full items-center justify-center gap-1 rounded-lg px-1 py-0.5 transition hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+          active ? 'text-primary' : 'text-primary/90'
+        }`}
+        aria-sort={
+          active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+        }
+      >
+        <span>{label}</span>
+        <SortIcon
+          className={`h-3.5 w-3.5 shrink-0 ${active ? 'opacity-100' : 'opacity-40'}`}
+          aria-hidden
+        />
+      </button>
+    </th>
+  );
+}
 
 const PAGE_SIZE_OPTIONS = [
   { label: '20', value: 20 },
@@ -24,15 +67,33 @@ export default function DikaTable({
   onViewDetail,
   loading,
   emptyMessage = 'ไม่พบข้อมูลเรื่องเบิกจ่าย',
+  visibleColumns = defaultColumnVisibility(),
 }) {
+  const showCol = (columnId) => isTableColumnVisible(visibleColumns, columnId);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const sortedItems = useMemo(
+    () => sortDikaItems(items, sortKey, sortDir),
+    [items, sortKey, sortDir],
+  );
+
+  const handleSort = (columnKey) => {
+    if (sortKey === columnKey) {
+      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(columnKey);
+    setSortDir('desc');
+  };
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [items, pageSize]);
+  }, [items, pageSize, sortKey, sortDir]);
 
-  const totalItems = items.length;
+  const totalItems = sortedItems.length;
   const totalPages =
     pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
 
@@ -43,11 +104,11 @@ export default function DikaTable({
   }, [currentPage, totalPages]);
 
   const paginatedItems = useMemo(() => {
-    if (pageSize === 'all') return items;
+    if (pageSize === 'all') return sortedItems;
 
     const startIndex = (currentPage - 1) * pageSize;
-    return items.slice(startIndex, startIndex + pageSize);
-  }, [items, currentPage, pageSize]);
+    return sortedItems.slice(startIndex, startIndex + pageSize);
+  }, [sortedItems, currentPage, pageSize]);
 
   const rangeStart = totalItems === 0 ? 0 : pageSize === 'all' ? 1 : (currentPage - 1) * pageSize + 1;
   const rangeEnd =
@@ -77,15 +138,47 @@ export default function DikaTable({
         <table className="w-full min-w-350 text-sm">
           <thead className="text-center">
             <tr className="border-b border-gray-100 bg-primary/5">
-              <th className="px-4 py-3 font-semibold text-primary">เลขที่รับเรื่อง</th>
-              <th className="px-4 py-3 font-semibold text-primary">วันที่</th>
-              <th className="min-w-56 px-4 py-3 font-semibold text-primary">เรื่อง</th>
-              <th className="px-4 py-3 font-semibold text-primary">จำนวนเงิน</th>
-              <th className="px-4 py-3 font-semibold text-primary">ผู้รับเงิน</th>
-              <th className="px-4 py-3 font-semibold text-primary">หน่วยงาน</th>
-              <th className="px-4 py-3 font-semibold text-primary">ผู้รับผิดชอบ</th>
-              <th className="px-4 py-3 font-semibold text-primary">สถานะ</th>
-              <th className="min-w-36 px-4 py-3 font-semibold text-primary">ระยะเวลาดำเนินการ</th>
+              {showCol('dikaNo') && (
+                <SortableHeader
+                  label="เลขที่รับเรื่อง"
+                  columnKey="dikaNo"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              )}
+              {showCol('date') && (
+                <SortableHeader
+                  label="วันที่"
+                  columnKey="date"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={handleSort}
+                />
+              )}
+              {showCol('subject') && (
+                <th className="min-w-56 px-4 py-3 font-semibold text-primary">เรื่อง</th>
+              )}
+              {showCol('amount') && (
+                <th className="px-4 py-3 font-semibold text-primary">จำนวนเงิน</th>
+              )}
+              {showCol('payee') && (
+                <th className="px-4 py-3 font-semibold text-primary">ผู้รับเงิน</th>
+              )}
+              {showCol('department') && (
+                <th className="px-4 py-3 font-semibold text-primary">หน่วยงาน</th>
+              )}
+              {showCol('assignee') && (
+                <th className="px-4 py-3 font-semibold text-primary">ผู้รับผิดชอบ</th>
+              )}
+              {showCol('status') && (
+                <th className="px-4 py-3 font-semibold text-primary">สถานะ</th>
+              )}
+              {showCol('duration') && (
+                <th className="min-w-36 px-4 py-3 font-semibold text-primary">
+                  ระยะเวลาดำเนินการ
+                </th>
+              )}
               <th className="px-4 py-3 font-semibold text-primary">จัดการ</th>
             </tr>
           </thead>
@@ -101,31 +194,51 @@ export default function DikaTable({
                       : ''
                   }`}
                 >
-                  <td className={`px-4 py-3 text-center ${isCancelled ? '' : 'font-medium'}`}>
-                    {formatDikaNo(item.dikaNo) || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-center">{formatDate(item.date)}</td>
-                  <td
-                    className="min-w-56 max-w-80 px-4 py-3 text-left wrap-break-word"
-                    title={item.subject}
-                  >
-                    {item.subject}
-                  </td>
-                  <td className="px-4 py-3 text-right">{formatCurrency(item.amount)}</td>
-                  <td className="px-4 py-3 text-left">{item.payee}</td>
-                  <td className="px-4 py-3 text-left">{item.department}</td>
-                  <td className="px-4 py-3 text-left">
-                    {getUserDisplayName(item.assignee, users)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <StatusBadge status={item.status} />
-                  </td>
-                  <td className="min-w-36 px-4 py-3 text-center text-xs sm:text-sm">
-                    <ProcessingDurationDisplay
-                      timestamp={item.timestamp}
-                      finishtime={item.finishtime}
-                    />
-                  </td>
+                  {showCol('dikaNo') && (
+                    <td
+                      className={`px-4 py-3 text-center ${isCancelled ? '' : 'font-medium'}`}
+                    >
+                      {formatDikaNo(item.dikaNo) || '-'}
+                    </td>
+                  )}
+                  {showCol('date') && (
+                    <td className="px-4 py-3 text-center">{formatDate(item.date)}</td>
+                  )}
+                  {showCol('subject') && (
+                    <td
+                      className="min-w-56 max-w-80 px-4 py-3 text-left wrap-break-word"
+                      title={item.subject}
+                    >
+                      {item.subject}
+                    </td>
+                  )}
+                  {showCol('amount') && (
+                    <td className="px-4 py-3 text-right">{formatCurrency(item.amount)}</td>
+                  )}
+                  {showCol('payee') && (
+                    <td className="px-4 py-3 text-left">{item.payee}</td>
+                  )}
+                  {showCol('department') && (
+                    <td className="px-4 py-3 text-left">{item.department}</td>
+                  )}
+                  {showCol('assignee') && (
+                    <td className="px-4 py-3 text-left">
+                      {getUserDisplayName(item.assignee, users)}
+                    </td>
+                  )}
+                  {showCol('status') && (
+                    <td className="px-4 py-3 text-center">
+                      <StatusBadge status={item.status} />
+                    </td>
+                  )}
+                  {showCol('duration') && (
+                    <td className="min-w-36 px-4 py-3 text-center text-xs sm:text-sm">
+                      <ProcessingDurationDisplay
+                        timestamp={item.timestamp}
+                        finishtime={item.finishtime}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-center no-underline">
                     <div className="flex justify-center">
                       <DikaRowActions

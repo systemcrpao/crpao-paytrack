@@ -152,11 +152,14 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+const DIKA_LIST_COLUMNS =
+  'id,dika_no,date,subject,amount,payee,department,assignee,status,created_at_display,finishtime,notes';
+
 export async function getBootstrap() {
   const supabase = await getSupabaseClient();
 
   const [dikaResult, profilesResult] = await Promise.all([
-    supabase.from('dika').select('*').order('id', { ascending: true }),
+    supabase.from('dika').select(DIKA_LIST_COLUMNS).order('id', { ascending: true }),
     supabase.from('profiles').select('username, name, role').order('username'),
   ]);
 

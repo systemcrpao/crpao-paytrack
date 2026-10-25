@@ -121,7 +121,17 @@ Workflow `.github/workflows/deploy-pages.yml` จะ:
 
 ไม่ใช้ service_role ใน CI
 
-## 7) แก้ปัญหา migrate ที่พบบ่อย
+## 7) โควตา Log Query (Free ~100 GB)
+
+เมตริก **Log Query** ใน Supabase ไม่ใช่ `console.log` ในเบราว์เซอร์ — เป็นปริมาณ **log ที่ ingest** + การ **สแกน log** ใน Dashboard (Logs Explorer, ช่วงเวลากว้างๆ)
+
+เพื่อไม่ให้โควตาเต็มเร็ว:
+
+- เปิด **Logs** เฉพาะช่วงเวลาสั้นๆ (1 ชม. / 1 วัน) อย่าเปิดทิ้งแท็บ Log ค้างกว้างหลายวัน
+- ช่วง spike วัน migrate / debug GAS มักทำให้ log ingest พุ่ง — ปกติจะลดลงเมื่อใช้แอp production อย่างเดียว
+- แอp ลด request โดย cache bootstrap ใน session (~1 ชม.) และไม่ revalidate อัตโนมัติทุก 1–2 นาที — ใช้ปุ่ม **รีเฟรช** เมื่อต้องการข้อมูลล่าสุด
+
+## 8) แก้ปัญหา migrate ที่พบบ่อย
 
 | อาการ | สาเหตุ / แก้ |
 |--------|----------------|

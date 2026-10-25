@@ -64,25 +64,15 @@ async function fetchFromGas() {
     ]);
     return { users, dika };
   } catch {
-    console.warn('chunk API ไม่พร้อม — ลอง getBootstrap แบบเดิม');
     return fetchLegacyBootstrap();
   }
 }
 
 async function main() {
-  console.log('ดึงข้อมูลจาก GAS...');
   const { users, dika } = await fetchFromGas();
-  console.log(`พบผู้ใช้ ${users.length} คน, เรื่องเบิกจ่าย ${dika.length} รายการ`);
-
   const admin = createAdminClient();
-  console.log('โอนผู้ใช้ → Supabase Auth + profiles...');
-  const userStats = await upsertUsers(admin, users);
-  console.log(`ผู้ใช้: สร้างใหม่ ${userStats.created}, อัปเดต ${userStats.updated}`);
-
-  console.log('โอนข้อมูล dika...');
-  const dikaCount = await upsertDika(admin, dika);
-  console.log(`dika: upsert ${dikaCount} แถว`);
-  console.log('เสร็จสิ้น');
+  await upsertUsers(admin, users);
+  await upsertDika(admin, dika);
 }
 
 main().catch((err) => {

@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { getBootstrap } from '../services/api';
 
-const STALE_MS = 90_000;
 const SESSION_CACHE_KEY = 'crpao_paytrack_bootstrap_v1';
-const SESSION_CACHE_MAX_AGE_MS = 10 * 60_000;
+const SESSION_CACHE_MAX_AGE_MS = 60 * 60_000;
 
 let bootstrapInFlight = null;
 
@@ -95,14 +94,9 @@ export const useDikaStore = create((set, get) => ({
 
     const { loadedAt, items, users } = get();
     const hasCache = loadedAt > 0;
-    const isFresh = Date.now() - loadedAt < STALE_MS;
-
-    if (!force && hasCache && isFresh) {
-      return { items, users };
-    }
 
     if (!force && hasCache) {
-      void get().revalidateBootstrap();
+      // ใช้ cache — ไม่ revalidate อัตโนมัติ (ลด request / log ฝั่ง Supabase)
       return { items, users };
     }
 

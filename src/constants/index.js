@@ -1,3 +1,6 @@
+export const APP_TITLE = 'ระบบบริหารจัดการเรื่องเบิกจ่าย';
+export const APP_ORG = 'องค์การบริหารส่วนจังหวัดเชียงราย';
+
 export const ROLES = {
   ADMIN: 'Admin',
   USER: 'User',

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LogIn, FileText, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { APP_ORG, APP_TITLE } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { login as apiLogin } from '../services/api';
 function formatLoginError(message) {
@@ -46,13 +47,16 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md rounded-2xl border border-white/60 bg-white/70 p-8 shadow-xl backdrop-blur-md">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/90 backdrop-blur-md">
-            <FileText className="h-7 w-7 text-white" />
+          <div
+            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/90 backdrop-blur-md"
+            title={APP_TITLE}
+            aria-hidden
+          >
+            <FileText className="h-7 w-7 text-white" aria-hidden />
           </div>
-          <h1 className="text-2xl font-bold text-primary">
-            ระบบจัดการเรื่องเบิกจ่าย
-          </h1>
-          <p className="mt-1 text-sm text-warm-gray/70">เข้าสู่ระบบเพื่อดำเนินการ</p>
+          <h1 className="text-2xl font-bold text-primary">{APP_TITLE}</h1>
+          <p className="mt-1 text-sm text-warm-gray/70">{APP_ORG}</p>
+          <p className="text-xs text-warm-gray/60">เข้าสู่ระบบเพื่อดำเนินการ</p>
         </div>
 
         {error && (

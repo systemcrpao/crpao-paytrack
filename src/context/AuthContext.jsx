@@ -14,55 +14,63 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
+    let ready = false;
 
-    async function bootstrapAuth() {
-      try {
-        const supabase = await getSupabaseClient();
-        const profile = await fetchSessionProfile();
-
-        if (cancelled) return;
-
-        if (profile) {
-          login(profile);
-        } else if (useAuthStore.getState().isAuthenticated) {
-          logout();
-        }
-      } catch {
-        if (!cancelled && useAuthStore.getState().isAuthenticated) {
-          logout();
-        }
-      } finally {
-        if (!cancelled) {
-          setAuthReady(true);
-        }
+    const markReady = () => {
+      if (!cancelled && !ready) {
+        ready = true;
+        setAuthReady(true);
       }
-    }
-
-    void bootstrapAuth();
+    };
 
     let unsubscribe = () => {};
 
     void getSupabaseClient().then((supabase) => {
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (cancelled) return;
+
+        // refresh token ไม่ต้องโหลด profile ซ้ำ — ลด request ไป Supabase
+        if (event === 'TOKEN_REFRESHED') {
+          markReady();
+          return;
+        }
 
         if (!session) {
           if (useAuthStore.getState().isAuthenticated) {
             logout();
           }
+          markReady();
           return;
         }
 
-        void fetchSessionProfile()
-          .then((profile) => {
-            if (profile) login(profile);
-          })
-          .catch(() => {
-            logout();
-          });
+        const alreadyLoggedIn = useAuthStore.getState().isAuthenticated;
+
+        if (event === 'SIGNED_IN' && alreadyLoggedIn) {
+          markReady();
+          return;
+        }
+
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          try {
+            const profile = await fetchSessionProfile();
+            if (profile) {
+              login(profile);
+            } else if (alreadyLoggedIn) {
+              logout();
+            }
+          } catch {
+            if (useAuthStore.getState().isAuthenticated) {
+              logout();
+            }
+          }
+        }
+
+        markReady();
       });
 
-      unsubscribe = () => data.subscription.unsubscribe();
+      unsubscribe = () => subscription.unsubscribe();
     });
 
     return () => {

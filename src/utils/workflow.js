@@ -179,9 +179,46 @@ export function filterDikaByFiscalYear(items, fiscalYear) {
 }
 
 export function sortDikaByDateDesc(items) {
-  return [...items].sort(
-    (a, b) => parseItemDate(b.date) - parseItemDate(a.date),
-  );
+  return sortDikaItems(items, 'date', 'desc');
+}
+
+function compareDikaNoValues(aRaw, bRaw) {
+  const rawA = String(aRaw ?? '').trim();
+  const rawB = String(bRaw ?? '').trim();
+
+  if (!rawA && !rawB) return 0;
+  if (!rawA) return 1;
+  if (!rawB) return -1;
+
+  const numA = /^\d+$/.test(rawA) ? Number(rawA) : NaN;
+  const numB = /^\d+$/.test(rawB) ? Number(rawB) : NaN;
+
+  if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+    return numA - numB;
+  }
+
+  return rawA.localeCompare(rawB, 'th', { numeric: true });
+}
+
+/** @param {'date'|'dikaNo'} sortKey @param {'asc'|'desc'} direction */
+export function sortDikaItems(items, sortKey, direction) {
+  const factor = direction === 'asc' ? 1 : -1;
+
+  return [...items].sort((a, b) => {
+    let cmp = 0;
+
+    if (sortKey === 'dikaNo') {
+      cmp = compareDikaNoValues(a.dikaNo, b.dikaNo);
+    } else {
+      cmp = parseItemDate(a.date) - parseItemDate(b.date);
+    }
+
+    if (cmp === 0) {
+      cmp = compareDikaNoValues(a.dikaNo, b.dikaNo);
+    }
+
+    return cmp * factor;
+  });
 }
 
 export function canStaffAcknowledge(status) {
@@ -211,12 +248,15 @@ export function getAckTargetStatus(role) {
   return null;
 }
 
+/** แสดงจำนวนเงินแบบเดียวกันทุก role/หน้าจอ — 34,500.00 */
 export function formatCurrency(amount) {
-  return new Intl.NumberFormat('th-TH', {
-    style: 'currency',
-    currency: 'THB',
+  const value = Number(amount);
+  const safe = Number.isFinite(value) ? value : 0;
+
+  return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
-  }).format(Number(amount) || 0);
+    maximumFractionDigits: 2,
+  }).format(safe);
 }
 
 /** เลขที่รับเรื่อง (คอลัมน์ B) — แสดงอย่างน้อย 4 หลัก เช่น 1 → 0001 */

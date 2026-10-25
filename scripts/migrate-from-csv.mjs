@@ -65,15 +65,9 @@ async function main() {
   const users = mapUserRows(readCsvSheet('User.csv'));
   const dika = mapDikaRows(readCsvSheet('Data.csv'));
 
-  console.log(`จาก CSV: ผู้ใช้ ${users.length}, dika ${dika.length}`);
-
   const admin = createAdminClient();
-  const userStats = await upsertUsers(admin, users);
-  console.log(`ผู้ใช้: สร้างใหม่ ${userStats.created}, อัปเดต ${userStats.updated}`);
-
-  const dikaCount = await upsertDika(admin, dika);
-  console.log(`dika: upsert ${dikaCount} แถว`);
-  console.log('เสร็จสิ้น');
+  await upsertUsers(admin, users);
+  await upsertDika(admin, dika);
 }
 
 main().catch((err) => {
